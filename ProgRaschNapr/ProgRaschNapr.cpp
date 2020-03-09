@@ -68,8 +68,6 @@ int main()
 
     cout << "Field-strength value: " << round(CalculateFieldStrValue(field), 3) << " DBm" << endl << endl;
 
-    cout << Interpolation(60.708, 56.071, 22, "distance");
-
     system("pause");
 }
 
@@ -445,7 +443,7 @@ double ReadFieldStrengthValue(double timePercentage, double frequency, double an
     }
 
             
-    dataCurveFile.open(fileName + ".txt");
+    dataCurveFile.open("Data/" + fileName + ".txt");
     if (!dataCurveFile.is_open())
         return -1;
 
