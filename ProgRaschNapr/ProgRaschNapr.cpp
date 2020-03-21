@@ -1,29 +1,45 @@
-﻿#include <string>
+﻿#define NOMINMAX
+#include <conio.h>
+#include <cstdlib>
+#include <string>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <vector>
+#include <Windows.h>
 
 using namespace std;
 
 #pragma region Structs
 struct  FieldParams
 {
-    double timePercentage = 0;//p
-    double frequency = 0; //частота(f)
-    double antennaHeight = 0; //h
-    double distance = 0;//d
+    float timePercentage = 0;//p
+    float frequency = 0; //частота(f)
+    float antennaHeight = 0; //h
+    float distance = 0;//d
+    float fieldStrength = 0;//E
+};
+
+struct FieldGraph
+{
+    vector<FieldParams> fields;
+    int distanceStep = 0;
 };
 #pragma endregion
 
 #pragma region Consts
-const double heights[9] = { 1200, 600, 300, 150, 75, 437.5, 20, 10 };
+const float heights[9] = { 1200, 600, 300, 150, 75, 37.5, 20, 10 };
 
-const double C0 = 2.515517;
-const double C1 = 0.802853;
-const double C2 = 0.010328;
-const double D1 = 1.432788;
-const double D2 = 0.189269;
-const double D3 = 0.001308;
+const float C0 = 2.515517f;
+const float C1 = 0.802853f;
+const float C2 = 0.010328f;
+const float D1 = 1.432788f;
+const float D2 = 0.189269f;
+const float D3 = 0.001308f;
 
 const string VALIDATION_ERROR_MEASSAGE = "ERROR VALUE";
 #pragma endregion
@@ -31,44 +47,137 @@ const string VALIDATION_ERROR_MEASSAGE = "ERROR VALUE";
 #pragma region Functions Prototypes
 FieldParams ReadFromKeyboard();
 
-double CalculateFieldStrValue(FieldParams field);
-double CalculateFieldStrValue(double timePercentage, double frequency, double antennaHeight, double distance);
+void AddInTable(int inputMethod);
+void LoadingAnimation();
 
-double DAnnex();
-double HAnnex(double d, double h, double t, double f);
+float CalculateFieldStrValue(FieldParams field);
+float CalculateFieldStrValue(float timePercentage, float frequency, float antennaHeight, float distance);
 
-double Interpolation(double eInf, double eSup, double x, string dataType);
+float DAnnex();
+float HAnnex(float d, float h, float t, float f);
 
-double ReadFieldStrengthValue(double timePercentage, double frequency, double antennaHeight, double distance);
+float Interpolation(float eInf, float eSup, float x, string dataType);
 
-double Validation(string s);
+float ReadFieldStrengthValue(float timePercentage, float frequency, float antennaHeight, float distance);
+
+float Validation(string s);
 void ValidationError();
 
-double SearchInf(double data, string dataType);
-double SearchSup(double data, string dataType);
+float SearchInf(float data, string dataType);
+float SearchSup(float data, string dataType);
 
-double Q(double x);
-double T(double x);
-double Xi(double x);
-double J(double h, double f);
+float Q(float x);
+float T(float x);
+float Xi(float x);
+float J(float h, float f);
 
-double sqr(double a);
-double round(double value, int numberOfSymbols);
+void CreateExcel(vector<FieldParams> fields, ios::iostate mode);
+
+float sqr(float a);
+float round(float value, int numberOfSymbols);
 #pragma endregion
 
 int main()
 {
-    FieldParams field = ReadFromKeyboard();
-    system("cls");
+    setlocale(LC_ALL, "");
 
-    cout << "frequency(MHz): " << field.frequency << endl;
-    cout << "time percentage(%): " << field.timePercentage << endl;
-    cout << "height of transmitting/base antenna(m): " << field.antennaHeight << endl;
-    cout << "distance(km): " << field.distance << endl << endl;
+    FieldGraph graph;
+    char flag;
 
-    cout << "Field-strength value: " << round(CalculateFieldStrValue(field), 3) << " DBm" << endl << endl;
+    while (true)
+    {
+        printf("<1> Построить новую таблицу\n");
+        printf("<2> Добавить график в таблицу\n");
+        printf("<0> Выход\n\n");
 
+        flag = _getch();
+
+        if (flag == '1')
+        {
+            system("cls");
+            AddInTable(1);
+            system("cls");
+        }
+        else if (flag == '2')
+        {
+            system("cls");
+            AddInTable(2);
+            system("cls");
+        }
+        else if (flag == '0')
+            break;
+        else
+        {
+            system("cls");
+            continue;
+        }
+    }
+}
+
+void LoadingAnimation()
+{
+    srand(time(NULL));
+    float temp = 0;
+    float progress = 0.0;
+    int barWidth = 70;
+    int pos = 0;
+    while (progress <= 1.0) {
+
+        std::cout << "[";
+        pos = barWidth * progress;
+        for (int i = 0; i < barWidth; i++) {
+            if (i < pos) std::cout << "=";
+            else if (i == pos) std::cout << ">";
+            else std::cout << " ";
+        }
+        if(progress <= 1.0)
+            std::cout << "] " << int(progress * 100.0) << " %\r";
+        std::cout.flush();
+
+        temp = rand() % 13 + 16;
+        temp /= 100;
+        progress += temp;
+        Sleep(rand() % 400 + 100);
+    }
+
+    std::cout << "[";
+    pos = barWidth * 0.99;
+    for (int i = 0; i < barWidth; i++) {
+        if (i < pos) std::cout << "=";
+        else if (i == pos) std::cout << ">";
+        else std::cout << " ";
+    }
+    std::cout << "] " << "Done!";
+    std::cout.flush();
+
+    std::cout  << std::endl;
     system("pause");
+}
+
+void AddInTable(int inputMethod)
+{
+    FieldGraph graph;
+    FieldParams field;
+    graph.fields.push_back(ReadFromKeyboard());
+    graph.distanceStep = Validation("distance step(km): ");
+    
+
+    for (int j = 0; j <= 1000; j += graph.distanceStep)
+    {
+        graph.fields[graph.fields.size() - 1].distance = j;
+        graph.fields[graph.fields.size() - 1].fieldStrength = CalculateFieldStrValue(graph.fields[graph.fields.size() - 1]);
+
+        field.frequency = graph.fields[0].frequency;
+        field.timePercentage = graph.fields[0].timePercentage;
+        field.antennaHeight = graph.fields[0].antennaHeight;
+
+        if (j + graph.distanceStep <= 1000) graph.fields.push_back(field);
+    }
+
+    if(inputMethod == 1)
+        CreateExcel(graph.fields, ios_base::out);
+    else
+        CreateExcel(graph.fields, ios_base::app);
 }
 
 FieldParams ReadFromKeyboard()
@@ -77,26 +186,25 @@ FieldParams ReadFromKeyboard()
 
     field.frequency = Validation("frequency(MHz): ");
     field.timePercentage = Validation("time percentage(%): ");
-    field.antennaHeight = Validation("height of transmitting/base antenna(m): ");
-    field.distance = Validation("distance(km): ");
+    field.antennaHeight = Validation("height of antenna(m): ");
 
     return field;
 }
 
-double CalculateFieldStrValue(FieldParams field)
+float CalculateFieldStrValue(FieldParams field)
 {
     return CalculateFieldStrValue(field.timePercentage, field.frequency, field.antennaHeight, field.distance);
 }
 
-double CalculateFieldStrValue(double timePercentage, double frequency, double antennaHeight, double distance)
+float CalculateFieldStrValue(float timePercentage, float frequency, float antennaHeight, float distance)
 {
-    double E = 0;
-    double Einf_t = 0;
-    double Esup_t = 0;
-    double Einf_f = 0;
-    double Esup_f = 0;
-    double Einf_h = 0;
-    double Esup_h = 0;
+    float E = 0;
+    float Einf_t = 0;
+    float Esup_t = 0;
+    float Einf_f = 0;
+    float Esup_f = 0;
+    float Einf_h = 0;
+    float Esup_h = 0;
 
     bool flag = false;
 
@@ -106,9 +214,9 @@ double CalculateFieldStrValue(double timePercentage, double frequency, double an
         return -1;
     }
 
-    double timePercentageTemp = SearchInf(timePercentage, "timePercentage");
-    double frequencyTemp = SearchInf(frequency, "frequency");
-    double antennaHeightTemp = SearchInf(antennaHeight, "antennaHeight");
+    float timePercentageTemp = SearchInf(timePercentage, "timePercentage");
+    float frequencyTemp = SearchInf(frequency, "frequency");
+    float antennaHeightTemp = SearchInf(antennaHeight, "antennaHeight");
 
     while (!flag) {
         if (distance == SearchInf(distance, "distance"))
@@ -193,7 +301,7 @@ double CalculateFieldStrValue(double timePercentage, double frequency, double an
     return E;
 }
 
-double SearchInf(double data, string dataType) 
+float SearchInf(float data, string dataType)
 {
     if (dataType == "frequency")
     {
@@ -237,21 +345,18 @@ double SearchInf(double data, string dataType)
             return 20;
         else if (data >= 25 && data < 100)
         {
-            data -= 20;
-            data = fmod(data, 5) * 5;
-            data += 20;
+            data = (int)data / 5;
+            data *= 5;
         }
         else if (data >= 100 && data < 200)
         {
-            data -= 100;
-            data = fmod(data, 10) * 10;
-            data += 100;
+            data = (int)data / 10;
+            data *= 10;
         }
         else if (data >= 200 && data < 1000)
         {
-            data -= 200;
-            data = fmod(data, 25) * 25;
-            data += 200;
+            data = (int)data/25;
+            data *= 25;
         }
         else if (data >= 1000)
         {
@@ -262,7 +367,7 @@ double SearchInf(double data, string dataType)
     return data;
 }
 
-double SearchSup(double data, string dataType)
+float SearchSup(float data, string dataType)
 {
     if (dataType == "frequency")
     {
@@ -330,16 +435,16 @@ double SearchSup(double data, string dataType)
     return data;
 }
 
-double Interpolation(double eInf, double eSup, double x, string dataType)
+float Interpolation(float eInf, float eSup, float x, string dataType)
 {
-    double xInf = SearchInf(x, dataType);
-    double xSup = SearchSup(x, dataType);
+    float xInf = SearchInf(x, dataType);
+    float xSup = SearchSup(x, dataType);
 
     if (dataType == "timePercentage")
     {
-        double Qt = Q(x / 100);
-        double Qinf = Q(xInf / 100);
-        double Qsup = Q(xSup / 100);
+        float Qt = Q(x / 100);
+        float Qinf = Q(xInf / 100);
+        float Qsup = Q(xSup / 100);
 
         return eSup * (Qinf - Qt) / (Qinf - Qsup) + eInf * (Qt - Qsup) / (Qinf - Qsup);
     }
@@ -347,45 +452,45 @@ double Interpolation(double eInf, double eSup, double x, string dataType)
     return eInf + ((eSup - eInf) * (log(x / xInf) / log(xSup / xInf)));
 }
 
-double DAnnex()
+float DAnnex()
 {
     return -1;
 }
 
-double HAnnex(double d, double h, double t, double f)
+float HAnnex(float d, float h, float t, float f)
 {
-    double E10 = Interpolation(ReadFieldStrengthValue(t, f, SearchInf(h, "antennaHeight"), SearchSup(d, "distance")), 
+    float E10 = Interpolation(ReadFieldStrengthValue(t, f, SearchInf(h, "antennaHeight"), SearchSup(d, "distance")), 
         ReadFieldStrengthValue(t, f, SearchSup(10, "antennaHeight"), SearchSup(d, "distance")),
         10, "antennaHeight");
-    double E20 = Interpolation(ReadFieldStrengthValue(t, f, SearchInf(h, "antennaHeight"), SearchSup(d, "distance")),
+    float E20 = Interpolation(ReadFieldStrengthValue(t, f, SearchInf(h, "antennaHeight"), SearchSup(d, "distance")),
         ReadFieldStrengthValue(t, f, SearchSup(h, "antennaHeight"), SearchSup(d, "distance")),
         10, "antennaHeight");;
 
-    double C1020 = E10 - E20;
-    double Ch1neg10 = 6.03 - J(h, f);
-    double E0 = E10 + 0.5 * (C1020 + Ch1neg10);
-    double E = E0 + 0.1 * h * (E10 - E0);
+    float C1020 = E10 - E20;
+    float Ch1neg10 = 6.03f - J(h, f);
+    float E0 = E10 + 0.5f * (C1020 + Ch1neg10);
+    float E = E0 + 0.1f * h * (E10 - E0);
 
     return E;
 }
 
-double J(double h, double f)
+float J(float h, float f)
 {
-    double Kv = 0;
+    float Kv = 0;
     if (f == 100)
-        Kv = 1.35;
+        Kv = 1.35f;
     else if (f == 600)
-        Kv = 3.31;
+        Kv = 3.31f;
     else if (f == 2000)
-        Kv = 6.00;
+        Kv = 6.00f;
         
-    double O = atan(-h / 9000);
-    double v = Kv * O;
-    double j = 6.9 + 20 * log(sqrt(sqr(v - 0.1) + 1) + v - 0.1);
+    float O = atan(-h / 9000);
+    float v = Kv * O;
+    float j = 6.9f + 20 * (float)log(sqrt(sqr(v - 0.1f) + 1) + v - 0.1f);
     return 0;
 }
 
-double Q(double x)
+float Q(float x)
 {
     if (x <= 0.5)
         return T(x) - Xi(x);
@@ -393,23 +498,23 @@ double Q(double x)
         return -(T(1 - x) - Xi(1 - x));
 }
 
-double T(double x)
+float T(float x)
 {
     return round(sqrt(-2 * log(x)), 3);
 }
 
-double Xi(double x)
+float Xi(float x)
 {
     return round((((C2 * T(x) + C1) * T(x)) + C0) / (((D3 * T(x) + D2) * T(x) + D1) * T(x) + 10), 3);
 }
 
-double ReadFieldStrengthValue(double timePercentage, double frequency, double antennaHeight, double distance)
+float ReadFieldStrengthValue(float timePercentage, float frequency, float antennaHeight, float distance)
 {
     ifstream dataCurveFile;
     string fileName = to_string((int)frequency) + " MHz " + to_string((int)timePercentage) + " time";
-    double result = 0;
-    int d = distance;
-    int h = antennaHeight;
+    float result = 0;
+    int d = (int)distance;
+    int h = 0;
 
    for (int i = 8; i >= 0; i--) {
         if (antennaHeight == heights[i])
@@ -457,13 +562,13 @@ double ReadFieldStrengthValue(double timePercentage, double frequency, double an
     }
 
     dataCurveFile.close();
-    return round(result, 3);
+    return round((float)result, 3);
 }
 
-double Validation(string s)
+float Validation(string s)
 {
     bool flag = false;
-    double result;
+    float result;
 
 
     while (true)
@@ -480,17 +585,22 @@ double Validation(string s)
         {
             if (s == "frequency(MHz): ")
             {
-                if (result < 100 || result > 50) ValidationError();
+                if (result < 100 || result > 2000) ValidationError();
                 else break;
             }
-            else if (s == "height of transmitting/base antenna(m): ")
+            else if (s == "height of antenna(m): ")
             {
                 if (result <= 0) ValidationError();
                 else break;
             }
-            else if (s == "distance(km): ")
+            else if (s == "distance step(km): ")
             {
                 if (result < 0 || result > 1000) ValidationError();
+                else break;
+            }
+            else if (s == "time percentage(%): ")
+            {
+                if (result < 1 || result > 50) ValidationError();
                 else break;
             }
             else ValidationError();
@@ -508,13 +618,57 @@ void ValidationError()
     system("cls");
 }
 
-double sqr(double a)
+void CreateExcel(vector<FieldParams> fields, ios::iostate mode)
+{
+    ofstream outData;
+
+    outData.open("outfile.csv", mode);
+
+    if (!outData.is_open())
+    {
+        cout << "Error. Can't open excel file" << endl;
+        system("pause");
+        return;
+    }
+
+    if (mode == ios::out)
+        outData << "Field Strength(DBm)" << ';'
+        << "Distance(km)" << ';'
+        << "Frequency(MHz)" << ';'
+        << "Time(%)" << ';'
+        << "Height(m)" << endl;
+    else 
+        outData << endl << endl
+        << "Field Strength(DBm)" << ';'
+        << "Distance(km)" << ';'
+        << "Frequency(MHz)" << ';'
+        << "Time(%)" << ';'
+        << "Height(m)" << endl;
+
+    for (int i = 0; i < fields.size(); i++)
+    {
+        outData << fields[i].fieldStrength << ';'
+            << fields[i].distance << ';';
+        if (i == 0)
+        {
+            outData << fields[i].frequency << ';'
+                << fields[i].timePercentage << ';'
+                << fields[i].antennaHeight;
+        }
+
+        outData << endl;
+    }
+
+    outData.close();
+    LoadingAnimation();
+}
+
+float sqr(float a)
 {
     return a * a;
 }
 
-double round(double value, int numberOfSymbols)
+float round(float value, int numberOfSymbols)
 {
-    double res = round(value * pow(10, numberOfSymbols)) / pow(10, numberOfSymbols);
-    return res;
+    return round(value * pow(10, numberOfSymbols)) / pow(10, numberOfSymbols);
 }
